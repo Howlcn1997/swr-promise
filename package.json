@@ -1,0 +1,44 @@
+{
+  "name": "swr-promise",
+  "version": "1.0.0",
+  "description": "swr-promise is a utility that caches promise results with configurable expiration, error tolerance, and garbage collection to enhance performance and manage cache behavior.",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "scripts": {
+    "dev": "father dev",
+    "build": "father build",
+    "build:deps": "father prebundle",
+    "prepublishOnly": "father doctor && npm run build"
+  },
+  "keywords": [
+    "swr",
+    "cache",
+    "promise",
+    "promise-swr",
+    "swr-promise"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Howlcn1997/swr-promise"
+  },
+  "homepage": "https://github.com/Howlcn1997/swr-promise#readme",
+  "authors": [
+    "howlcn1997"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist",
+    "compiled"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.6",
+    "father": "^4.5.0-rc.2"
+  },
+  "dependencies": {
+    "concur-promise": "^1.0.0",
+    "lodash": "^4.17.21"
+  }
+}
