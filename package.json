@@ -1,6 +1,6 @@
 {
   "name": "swr-promise",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "swr-promise is a utility that caches promise results with configurable expiration, error tolerance, and garbage collection to enhance performance and manage cache behavior.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
