@@ -49,6 +49,10 @@ interface Options {
   cacheRejected?: (args: any[], error: any) => boolean;
   argsEqual?: (a: any[], b: any[]) => boolean;
   storeCreator?: (promiseFn: PromiseFn, globalCache?: boolean) => any;
+  onEmitted?: (
+    event: string,
+    info: { cache: Map<any, CacheNode>; args?: any[]; gcCount?: number }
+  ) => void;
 }
 
 type PromiseFn = (...args: any[]) => Promise<any>;
@@ -81,7 +85,10 @@ function createCacheStore(
  * @param {Function} options.cacheRejected Whether to cache the current exception result, the default is false (arguments, error) => boolean
  * @returns
  */
-export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) {
+export default function swrPromise(
+  promiseFn: PromiseFn,
+  options: Options = {}
+) {
   const {
     maxAge = 0,
     swr = 0,
@@ -92,6 +99,7 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
     cacheRejected = () => false,
     argsEqual = isEqual,
     storeCreator = createCacheStore,
+    onEmitted = () => {},
   } = options;
 
   const cacheStore = storeCreator(promiseFn, globalCache) as Map<
@@ -103,10 +111,15 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
 
   const callGC = throttle(() => {
     const now = Date.now();
+    let gcCount = 0;
     for (const [key, val] of cacheStore.entries()) {
       const needClear = val.swr < now && val.sie < now && val.e < now;
-      if (needClear) cacheStore.delete(key);
+      if (needClear) {
+        gcCount++;
+        cacheStore.delete(key);
+      }
     }
+    onEmitted("gc", { cache: cacheStore, gcCount });
   }, gcThrottle);
 
   return concurPromise(function (...args: any[]) {
@@ -117,6 +130,7 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
     ) || [args, createCacheNode(maxAge, swr, sie)];
 
     if (result.s === Status.UNTERMINATED) {
+      onEmitted("no-cache", { cache: cacheStore, args });
       return update(currentArgs);
     }
 
@@ -124,6 +138,7 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
 
     const isValid = result.e >= now;
     if (isValid) {
+      onEmitted("max-age", { cache: cacheStore, args });
       return response(result);
     }
 
@@ -131,11 +146,12 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
     const isInSIE = result.sie > now;
 
     if (isInSWR || isInSIE) {
+      onEmitted(isInSWR ? "swr" : "sie", { cache: cacheStore, args });
       update(currentArgs);
       return response(result);
     }
 
-    // Now in the Block
+    onEmitted("block", { cache: cacheStore, args });
     return update(currentArgs);
 
     function response(result: CacheNode): Promise<CacheNode["v"]> {
@@ -155,6 +171,8 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
           result.sie = 0;
 
           if (cacheFulfilled(selfArgs, value)) cacheStore.set(selfArgs, result);
+
+          onEmitted("update-success", { cache: cacheStore, args: selfArgs });
           return response(result);
         })
         .catch((error) => {
@@ -163,6 +181,11 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
           if (isInSWR) {
             result.swr = 0;
             result.sie = now + result._sie;
+
+            onEmitted("update-error-swr", {
+              cache: cacheStore,
+              args: selfArgs,
+            });
             return response(result);
           }
 
@@ -170,6 +193,11 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
 
           if (isInSIE) {
             result.swr = 0;
+
+            onEmitted("update-error-sie", {
+              cache: cacheStore,
+              args: selfArgs,
+            });
             return response(result);
           }
 
@@ -186,6 +214,10 @@ export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) 
             cacheStore.delete(selfArgs);
           }
 
+          onEmitted("update-error-block", {
+            cache: cacheStore,
+            args: selfArgs,
+          });
           return response(result);
         });
     }
