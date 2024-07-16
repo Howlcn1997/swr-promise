@@ -1,6 +1,6 @@
 {
   "name": "swr-promise",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "swr-promise is a utility that caches promise results with configurable expiration, error tolerance, and garbage collection to enhance performance and manage cache behavior.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -35,10 +35,15 @@
   },
   "devDependencies": {
     "@types/lodash": "^4.17.6",
+    "@types/lodash.isequal": "^4.5.8",
+    "@types/lodash.throttle": "^4.1.9",
     "father": "^4.5.0-rc.2"
   },
   "dependencies": {
-    "concur-promise": "^1.0.0",
-    "lodash": "^4.17.21"
+    "concur-promise": "^1.0.2",
+    "lodash.throttle": "^4.1.1"
+  },
+  "peerDependencies": {
+    "lodash.isequal": "^4.5.0"
   }
 }

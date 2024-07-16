@@ -1,5 +1,6 @@
-import { isEqual, throttle } from "lodash";
 import concurPromise from "concur-promise";
+import throttle from "lodash.throttle";
+import isEqual from "lodash.isequal";
 
 enum Status {
   UNTERMINATED = 0,

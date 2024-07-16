@@ -66,4 +66,15 @@ await swrMock().then(console.log); // 0.9504613827463109 same response, but mock
 
 ## LICENSE
 
-MIT
+This project is licensed under the MIT License.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## Acknowledgements
+
+This utility function uses:
+- `concur-promise` to prevents duplicate execution of identical Promise calls
+- `lodash.isequal` to compare the arguments
+- `lodash.throttle` to limit the frequency of garbage collection operations.
