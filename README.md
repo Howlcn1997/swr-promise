@@ -16,7 +16,9 @@ import swrPromise from "swr-promise";
 
 const fetchData = (url: string) => fetch(url);
 
-const fetchDataSWR = swrPromise(fetchData);
+const fiveMinute  = 5 * 60 * 1000
+
+const fetchDataSWR = swrPromise(fetchData,{ maxAge: fiveMinute });
 
 fetchDataSWR("https://api.example.com/data")
   .then(console.log)
