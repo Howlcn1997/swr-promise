@@ -34,7 +34,7 @@ fetchDataSWR("https://api.example.com/data")
 - `promiseFn`: The Promise function to be wrapped.
 - `options`(optional): An options object with the following properties:
   - `maxAge`: Cache validity period (ms), default is 0, when it is Infinity, it is cached permanently
-  - `swr`: Cache expiration tolerance time (ms), default 0 (`stale-while-revalidate`)
+  - `swr`: Cache expiration tolerance time (ms), default Infinity (`stale-while-revalidate`)
   - `sie`: Update error tolerance time (ms), default is Infinity (`stale-if-error`)
   - `gcThrottle`: Garbage collection throttling time (ms), the default is 0, when it is 0, no garbage collection is performed
   - `cacheFulfilled`: Whether to cache the current normal result, the default is true (arguments, value) => boolean
