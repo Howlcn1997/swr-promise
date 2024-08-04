@@ -110,6 +110,7 @@ export default function swrPromise(
   promiseFn = concurPromise(promiseFn);
 
   const callGC = throttle(() => {
+    // 清除缓存不采用递归便利,而采用小顶堆minHeap
     const now = Date.now();
     let gcCount = 0;
     for (const [key, val] of cacheStore.entries()) {
