@@ -16,7 +16,9 @@ import swrPromise from "swr-promise";
 
 const fetchData = (url: string) => fetch(url);
 
-const fetchDataSWR = swrPromise(fetchData);
+const fiveMinute  = 5 * 60 * 1000
+
+const fetchDataSWR = swrPromise(fetchData,{ maxAge: fiveMinute });
 
 fetchDataSWR("https://api.example.com/data")
   .then(console.log)
@@ -32,7 +34,7 @@ fetchDataSWR("https://api.example.com/data")
 - `promiseFn`: The Promise function to be wrapped.
 - `options`(optional): An options object with the following properties:
   - `maxAge`: Cache validity period (ms), default is 0, when it is Infinity, it is cached permanently
-  - `swr`: Cache expiration tolerance time (ms), default 0 (`stale-while-revalidate`)
+  - `swr`: Cache expiration tolerance time (ms), default Infinity (`stale-while-revalidate`)
   - `sie`: Update error tolerance time (ms), default is Infinity (`stale-if-error`)
   - `gcThrottle`: Garbage collection throttling time (ms), the default is 0, when it is 0, no garbage collection is performed
   - `cacheFulfilled`: Whether to cache the current normal result, the default is true (arguments, value) => boolean
@@ -66,4 +68,15 @@ await swrMock().then(console.log); // 0.9504613827463109 same response, but mock
 
 ## LICENSE
 
-MIT
+This project is licensed under the MIT License.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## Acknowledgements
+
+This utility function uses:
+- `concur-promise` to prevents duplicate execution of identical Promise calls
+- `lodash.isequal` to compare the arguments
+- `lodash.throttle` to limit the frequency of garbage collection operations.

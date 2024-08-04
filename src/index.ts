@@ -1,5 +1,6 @@
-import { isEqual, throttle } from "lodash";
 import concurPromise from "concur-promise";
+import throttle from "lodash.throttle";
+import isEqual from "lodash.isequal";
 
 enum Status {
   UNTERMINATED = 0,
@@ -77,7 +78,7 @@ function createCacheStore(
 /**
  * @param {Function} promiseFn
  * @param {Number} options.maxAge Cache validity period (ms), default is 0, when it is Infinity, it is cached permanently
- * @param {Number} options.swr Cache expiration tolerance time (ms), default 0
+ * @param {Number} options.swr Cache expiration tolerance time (ms), default Infinity
  * @param {Number} options.sie Update error tolerance time (ms), default is Infinity
  * @param {Number} options.gcThrottle Garbage collection throttling time (ms), the default is 0, when it is 0, no garbage collection is performed
  *
@@ -91,8 +92,8 @@ export default function swrPromise(
 ) {
   const {
     maxAge = 0,
-    swr = 0,
-    sie = 0,
+    swr = Infinity,
+    sie = Infinity,
     globalCache = false,
     gcThrottle = 0,
     cacheFulfilled = () => true,
