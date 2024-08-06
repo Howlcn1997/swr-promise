@@ -43,7 +43,7 @@ function createCacheNode(
   };
 }
 
-"a".substr
+"a".substr;
 
 interface Options {
   maxAge?: number;
@@ -127,6 +127,8 @@ export default function swrPromise(
         if (overClearCount <= clearSize) {
           cacheStore.delete(key);
           overClearCount++;
+        } else {
+          break;
         }
       }
 
