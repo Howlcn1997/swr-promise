@@ -1,6 +1,10 @@
 import concurPromise from "concur-promise";
 import throttle from "lodash.throttle";
 import isEqual from "lodash.isequal";
+import Store from "./store";
+
+const queueMacroTasks =
+  typeof requestIdleCallback !== "undefined" ? requestIdleCallback : setTimeout;
 
 enum Status {
   UNTERMINATED = 0,
@@ -39,40 +43,28 @@ function createCacheNode(
   };
 }
 
+"a".substr
+
 interface Options {
   maxAge?: number;
   swr?: number;
   sie?: number;
-  globalCache?: boolean;
-  gcThrottle?: number;
+  maxCacheSize?: number;
 
   cacheFulfilled?: (args: any[], value: any) => boolean;
   cacheRejected?: (args: any[], error: any) => boolean;
   argsEqual?: (a: any[], b: any[]) => boolean;
-  storeCreator?: (promiseFn: PromiseFn, globalCache?: boolean) => any;
+  storeCreator?: (promiseFn: PromiseFn) => any;
   onEmitted?: (
     event: string,
-    info: { cache: Map<any, CacheNode>; args?: any[]; gcCount?: number }
+    info: { cache: Store<any, CacheNode>; args?: any[]; gcCount?: number }
   ) => void;
 }
 
 type PromiseFn = (...args: any[]) => Promise<any>;
 
-const globalCacheStore = new Map();
-
-function createCacheStore(
-  promiseFn?: PromiseFn,
-  globalCache?: boolean
-): Map<any, CacheNode> {
-  if (globalCache) {
-    let cacheStore = globalCacheStore.get(promiseFn);
-    if (cacheStore) return cacheStore;
-
-    cacheStore = new Map<any, CacheNode>();
-    globalCacheStore.set(promiseFn, cacheStore);
-    return cacheStore;
-  }
-  return new Map<any, CacheNode>();
+function createCacheStore(): Store<any, CacheNode> {
+  return new Store<any, CacheNode>();
 }
 
 /**
@@ -80,7 +72,7 @@ function createCacheStore(
  * @param {Number} options.maxAge Cache validity period (ms), default is 0, when it is Infinity, it is cached permanently
  * @param {Number} options.swr Cache expiration tolerance time (ms), default Infinity
  * @param {Number} options.sie Update error tolerance time (ms), default is Infinity
- * @param {Number} options.gcThrottle Garbage collection throttling time (ms), the default is 0, when it is 0, no garbage collection is performed
+ * @param {maxCacheSize} options.maxCacheSize Maximum cache size
  *
  * @param {Function} options.cacheFulfilled Whether to cache the current normal result, the default is true (arguments, value) => boolean
  * @param {Function} options.cacheRejected Whether to cache the current exception result, the default is false (arguments, error) => boolean
@@ -94,8 +86,7 @@ export default function swrPromise(
     maxAge = 0,
     swr = Infinity,
     sie = Infinity,
-    globalCache = false,
-    gcThrottle = 0,
+    maxCacheSize,
     cacheFulfilled = () => true,
     cacheRejected = () => false,
     argsEqual = isEqual,
@@ -103,15 +94,15 @@ export default function swrPromise(
     onEmitted = () => {},
   } = options;
 
-  const cacheStore = storeCreator(promiseFn, globalCache) as Map<
-    any,
-    CacheNode
-  >;
+  const cacheStore = storeCreator(promiseFn) as Store<any, CacheNode>;
 
   promiseFn = concurPromise(promiseFn);
 
   const callGC = throttle(() => {
-    // 清除缓存不采用递归便利,而采用小顶堆minHeap
+    /**
+     * TODO:
+     *  - GC efficiency supporting large cache volumes: minHeap
+     */
     const now = Date.now();
     let gcCount = 0;
     for (const [key, val] of cacheStore.entries()) {
@@ -121,11 +112,32 @@ export default function swrPromise(
         cacheStore.delete(key);
       }
     }
+
+    /**
+     * After clearing expired data,
+     * if the cache size still exceeds the maximum cache size,
+     * the cache is cleared according to the LRU strategy.
+     */
+    if (maxCacheSize && cacheStore.size() > maxCacheSize) {
+      let overClearCount = 0;
+      const safeSize = Math.floor(maxCacheSize * 0.7);
+      const clearSize = cacheStore.size() - safeSize;
+
+      for (const [key] of cacheStore.entries()) {
+        if (overClearCount <= clearSize) {
+          cacheStore.delete(key);
+          overClearCount++;
+        }
+      }
+
+      gcCount += overClearCount;
+    }
+
     onEmitted("gc", { cache: cacheStore, gcCount });
-  }, gcThrottle);
+  }, 5000);
 
   return concurPromise(function (...args: any[]) {
-    if (gcThrottle !== 0) queueMicrotask(callGC);
+    queueMacroTasks(callGC);
 
     const [currentArgs, result] = Array.from(cacheStore.entries()).find(([a]) =>
       argsEqual(a, args)
@@ -172,7 +184,10 @@ export default function swrPromise(
           result.swr = result.e + result._swr;
           result.sie = 0;
 
-          if (cacheFulfilled(selfArgs, value)) cacheStore.set(selfArgs, result);
+          if (cacheFulfilled(selfArgs, value)) {
+            cacheStore.delete(selfArgs);
+            cacheStore.set(selfArgs, result);
+          }
 
           onEmitted("update-success", { cache: cacheStore, args: selfArgs });
           return response(result);
