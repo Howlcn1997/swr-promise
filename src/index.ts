@@ -43,8 +43,6 @@ function createCacheNode(
   };
 }
 
-"a".substr;
-
 interface Options {
   maxAge?: number;
   swr?: number;

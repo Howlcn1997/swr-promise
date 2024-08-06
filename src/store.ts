@@ -32,8 +32,6 @@ export default class Store<A, T> {
     return this.store.delete(key);
   }
 
-  clear() {}
-
   size() {
     return this.store.size;
   }
