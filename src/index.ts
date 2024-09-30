@@ -12,6 +12,19 @@ enum Status {
   ERRORED = 2,
 }
 
+export enum OnEmittedEventName {
+  NO_CACHE = "no-cache",
+  MAX_AGE = "max-age",
+  SWR = "swr",
+  SIE = "sie",
+  BLOCK = "block",
+  GC = "gc",
+  UPDATE_SUCCESS = "update-success",
+  UPDATE_ERROR_SWR = "update-error-swr",
+  UPDATE_ERROR_SIE = "update-error-sie",
+  UPDATE_ERROR_BLOCK = "update-error-block",
+}
+
 interface CacheNode {
   s: Status;
   v: any; // value
@@ -54,8 +67,8 @@ interface Options {
   argsEqual?: (a: any[], b: any[]) => boolean;
   storeCreator?: (promiseFn: PromiseFn) => any;
   onEmitted?: (
-    event: string,
-    info: { cache: Store<any, CacheNode>; args?: any[]; gcCount?: number }
+    event: OnEmittedEventName,
+    info: { cache: Store<any, CacheNode>; gcCount: number; args: any[] }
   ) => void;
 }
 
@@ -133,7 +146,7 @@ export default function swrPromise(
       gcCount += overClearCount;
     }
 
-    onEmitted("gc", { cache: cacheStore, gcCount });
+    onEmitted(OnEmittedEventName.GC, { cache: cacheStore, gcCount });
   }, 5000);
 
   return concurPromise(function (...args: any[]) {
@@ -144,7 +157,7 @@ export default function swrPromise(
     ) || [args, createCacheNode(maxAge, swr, sie)];
 
     if (result.s === Status.UNTERMINATED) {
-      onEmitted("no-cache", { cache: cacheStore, args });
+      onEmitted(OnEmittedEventName.NO_CACHE, { cache: cacheStore, args });
       return update(currentArgs);
     }
 
@@ -152,7 +165,7 @@ export default function swrPromise(
 
     const isValid = result.e >= now;
     if (isValid) {
-      onEmitted("max-age", { cache: cacheStore, args });
+      onEmitted(OnEmittedEventName.MAX_AGE, { cache: cacheStore, args });
       return response(result);
     }
 
@@ -160,12 +173,12 @@ export default function swrPromise(
     const isInSIE = result.sie > now;
 
     if (isInSWR || isInSIE) {
-      onEmitted(isInSWR ? "swr" : "sie", { cache: cacheStore, args });
+      onEmitted(isInSWR ? OnEmittedEventName.SWR : OnEmittedEventName.SIE, { cache: cacheStore, args });
       update(currentArgs);
       return response(result);
     }
 
-    onEmitted("block", { cache: cacheStore, args });
+    onEmitted(OnEmittedEventName.BLOCK, { cache: cacheStore, args });
     return update(currentArgs);
 
     function response(result: CacheNode): Promise<CacheNode["v"]> {
@@ -189,7 +202,7 @@ export default function swrPromise(
             cacheStore.set(selfArgs, result);
           }
 
-          onEmitted("update-success", { cache: cacheStore, args: selfArgs });
+          onEmitted(OnEmittedEventName.UPDATE_SUCCESS, { cache: cacheStore, args: selfArgs });
           return response(result);
         })
         .catch((error) => {
@@ -199,7 +212,7 @@ export default function swrPromise(
             result.swr = 0;
             result.sie = now + result._sie;
 
-            onEmitted("update-error-swr", {
+            onEmitted(OnEmittedEventName.UPDATE_ERROR_SWR, {
               cache: cacheStore,
               args: selfArgs,
             });
@@ -211,7 +224,7 @@ export default function swrPromise(
           if (isInSIE) {
             result.swr = 0;
 
-            onEmitted("update-error-sie", {
+            onEmitted(OnEmittedEventName.UPDATE_ERROR_SIE, {
               cache: cacheStore,
               args: selfArgs,
             });
@@ -231,7 +244,7 @@ export default function swrPromise(
             cacheStore.delete(selfArgs);
           }
 
-          onEmitted("update-error-block", {
+          onEmitted(OnEmittedEventName.UPDATE_ERROR_BLOCK, {
             cache: cacheStore,
             args: selfArgs,
           });
