@@ -14,7 +14,7 @@ enum Status {
 
 interface CacheNode {
   s: Status;
-  v: any; // value
+  v: unknown; // value
   e: number; // expire
   swr: number; // stale-while-revalidate
   sie: number; // stale-if-error
@@ -43,26 +43,26 @@ function createCacheNode(
   };
 }
 
-interface Options {
+export interface Options<V> {
   maxAge?: number;
   swr?: number;
   sie?: number;
   maxCacheSize?: number;
 
-  cacheFulfilled?: (args: any[], value: any) => boolean;
-  cacheRejected?: (args: any[], error: any) => boolean;
+  cacheFulfilled?: (args: any[], value: unknown) => boolean;
+  cacheRejected?: (args: any[], error: unknown) => boolean;
   argsEqual?: (a: any[], b: any[]) => boolean;
-  storeCreator?: (promiseFn: PromiseFn) => any;
+  storeCreator?: (promiseFn: PromiseFn<V>) => Store;
   onEmitted?: (
     event: string,
-    info: { cache: Store<any, CacheNode>; args?: any[]; gcCount?: number }
+    info: { cache: Store; args?: unknown[]; gcCount?: number }
   ) => void;
 }
 
-type PromiseFn = (...args: any[]) => Promise<any>;
+export type PromiseFn<V> = (...args: any[]) => Promise<V>;
 
-function createCacheStore(): Store<any, CacheNode> {
-  return new Store<any, CacheNode>();
+function createCacheStore<V>(): Store {
+  return new Store();
 }
 
 /**
@@ -70,16 +70,16 @@ function createCacheStore(): Store<any, CacheNode> {
  * @param {Number} options.maxAge Cache validity period (ms), default is 0, when it is Infinity, it is cached permanently
  * @param {Number} options.swr Cache expiration tolerance time (ms), default Infinity
  * @param {Number} options.sie Update error tolerance time (ms), default is Infinity
- * @param {maxCacheSize} options.maxCacheSize Maximum cache size
+ * @param {Number} options.maxCacheSize Maximum cache size
  *
  * @param {Function} options.cacheFulfilled Whether to cache the current normal result, the default is true (arguments, value) => boolean
  * @param {Function} options.cacheRejected Whether to cache the current exception result, the default is false (arguments, error) => boolean
  * @returns
  */
-export default function swrPromise(
-  promiseFn: PromiseFn,
-  options: Options = {}
-) {
+export default function swrPromise<V>(
+  promiseFn: PromiseFn<V>,
+  options: Options<V> = {}
+): PromiseFn<V> {
   const {
     maxAge = 0,
     swr = Infinity,
@@ -92,8 +92,9 @@ export default function swrPromise(
     onEmitted = () => {},
   } = options;
 
-  const cacheStore = storeCreator(promiseFn) as Store<any, CacheNode>;
+  const cacheStore = storeCreator(promiseFn);
 
+  // @ts-expect-error corcurPromise type does use `unknown` type, but the returned promise has the same type as the input promise
   promiseFn = concurPromise(promiseFn);
 
   const callGC = throttle(() => {
@@ -136,6 +137,7 @@ export default function swrPromise(
     onEmitted("gc", { cache: cacheStore, gcCount });
   }, 5000);
 
+  // @ts-expect-error corcurPromise type does use `unknown` type, but the returned promise has the same type as the input promise
   return concurPromise(function (...args: any[]) {
     queueMacroTasks(callGC);
 
@@ -177,7 +179,7 @@ export default function swrPromise(
     async function update(selfArgs: any[]) {
       return promiseFn
         .apply(null, selfArgs)
-        .then((value: any) => {
+        .then((value) => {
           result.s = Status.TERMINATED;
           result.v = value;
           result.e = Date.now() + result._maxAge;
@@ -240,3 +242,10 @@ export default function swrPromise(
     }
   });
 }
+
+export type {
+  Store as SwrPromiseStore,
+  PromiseFn as SwrPromiseFunction,
+  Options as SwrPromiseOptions,
+  CacheNode as SwrPromiseCacheNode,
+};

@@ -1,9 +1,19 @@
+import type { SwrPromiseCacheNode as CacheNode } from "./index";
+
 type Storage<A, T> = Map<A, T>;
 
 const Storage = Map;
 
-// A: Agreement, T: CacheNode
-export default class Store<A, T> {
+interface Store< A extends any[] = any[], T extends CacheNode = CacheNode> {
+  set(key: A, value: T): void;
+  get(key: A): T | undefined;
+  entries(): IterableIterator<[A, T]>;
+  delete(key: A): boolean;
+  size(): number;
+}
+
+// V: Value of data, A: Agreement, T: CacheNode
+class Store< A extends any[], T extends CacheNode> {
   store: Storage<A, T>;
   constructor() {
     this.store = new Storage<A, T>();
@@ -36,3 +46,5 @@ export default class Store<A, T> {
     return this.store.size;
   }
 }
+
+export default Store
