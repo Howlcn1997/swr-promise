@@ -24,11 +24,7 @@ interface CacheNode {
   _sie: number;
 }
 
-function createCacheNode(
-  maxAge: number,
-  swr: number = 0,
-  sie: number = 0
-): CacheNode {
+function createCacheNode(maxAge: number, swr: number = 0, sie: number = 0): CacheNode {
   const now = Date.now();
   return {
     s: Status.UNTERMINATED, // status
@@ -61,8 +57,12 @@ interface Options {
 
 type PromiseFn = (...args: any[]) => Promise<any>;
 
+let cacheStore: Store<any, CacheNode>;
 function createCacheStore(): Store<any, CacheNode> {
-  return new Store<any, CacheNode>();
+  if (!cacheStore) {
+    cacheStore = new Store<any, CacheNode>();
+  }
+  return cacheStore;
 }
 
 /**
@@ -76,10 +76,7 @@ function createCacheStore(): Store<any, CacheNode> {
  * @param {Function} options.cacheRejected Whether to cache the current exception result, the default is false (arguments, error) => boolean
  * @returns
  */
-export default function swrPromise(
-  promiseFn: PromiseFn,
-  options: Options = {}
-) {
+export default function swrPromise(promiseFn: PromiseFn, options: Options = {}) {
   const {
     maxAge = 0,
     swr = Infinity,
